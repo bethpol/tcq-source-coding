@@ -1,0 +1,16 @@
+{
+    "cSpell.words": [
+        "argmin",
+        "ascontiguousarray",
+        "astype",
+        "brentq",
+        "codebook",
+        "dtype",
+        "figsize",
+        "ndarray",
+        "njit",
+        "numba",
+        "savez",
+        "yscale"
+    ]
+}
