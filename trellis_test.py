@@ -127,6 +127,15 @@ def sweep_lamb_fixed_K_gaussian(K: int, R: float, lamb_min: float, lamb_max: flo
              params = np.array([lamb_min, lamb_max, POINTS]))
     return
 
+def corr_codebook_R_1(rho: float, K: int) -> None:
+    """
+    Perform Rate-1 trellis experiment for the correlated codebook setup
+    Use K for constraint length and rho for correlation coefficient
+    """
+    TRIALS = 100
+    n = 1000
+    
+
 
 def main():
     # Gaussian Source Higher K

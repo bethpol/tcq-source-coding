@@ -79,6 +79,35 @@ class Trellis:
         if self.source_type == 1:  # Quadratic Gaussian optimal reconstructions sigma^2 - D
             return np.random.normal(loc = 0, scale = (1 - params[0]), size=(self.K*2, self.n))
         return None
+
+    def _generate_corr_codebook(self, rho: float) -> np.ndarray:
+        """
+        Generates negatively correlated reconstructions on branches.
+
+        Returns:
+            np.ndarray: K*2 x n table of reconstructions
+        """
+        if self.source_type == 1:
+            # rho is negative correlation coefficient
+            std = 1 - abs(rho)  # Adjust std dev if needed
+
+            if not -1 < rho < 0:
+                raise ValueError("Correlation coefficient should be negative and between -1 and 0.")
+
+            num_pairs = self.K
+            matrix = np.zeros((num_pairs * 2, self.n))
+
+            for i in range(num_pairs):
+                # Generate two correlated standard normals
+                z1 = np.random.normal(0, std, size=self.n)
+                z2 = rho * z1 + np.sqrt(1 - rho ** 2) * np.random.normal(0, std, size=self.n)
+
+                # Assign to rows: odd row and even row below it
+                matrix[2*i] = z1
+                matrix[2*i + 1] = z2
+
+            return matrix
+        return None
     
     def _generate_penalties(self) -> np.ndarray:
         """
@@ -109,7 +138,8 @@ class Trellis:
         x_n: np.ndarray,
         R: float = 1.0,
         lamb: float = 0.0,
-        phi: float = 0.5
+        phi: float = 0.5, 
+        rho: float = 0.0
     ) -> Tuple[np.ndarray, float, float]:        
         """
             TO-DO: Write this
@@ -118,8 +148,11 @@ class Trellis:
             if self.source_type == 0:
                 self.codebook = self._generate_codebook()
             if self.source_type == 1:
-                D = 2 ** (-2 * R)
-                self.codebook = self._generate_codebook([D])
+                if self.params.size == 1:
+                    D = 2 ** (-2 * R)
+                    self.codebook = self._generate_codebook([D])
+                elif self.params[1] == "Corr":
+                    self.codebook = self._generate_corr_codebook(rho)
             return encode_R_1_numba(x_n, self.n, self.K, self.codebook, 
                                     self.source_type, self.transition)
         elif R < 1.0:  # Call separate encode routine for fractional rate support
