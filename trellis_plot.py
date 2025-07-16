@@ -372,11 +372,27 @@ def gaussian_pareto(K_states: list) -> None:
     plt.legend()
     plt.savefig("debug.pdf")
         
+def corr_codebook_R_1() -> None:
+    """
+    Makes plot to see rho = -0.0, -0.25, -0.5, -0.75
+    """
+    rhos = [-0.0, -0.25, -0.5, -0.75]
+    plt.figure()
+    plt.grid()
+    for rho in rhos:
+        data = np.load(f"data/corr_codebook_rho_{str(rho).replace('.', '_')}.npz")
+        plt.plot(data["K_vals"], data["distortions"], "o-", label=r"$\rho$="+str(rho))
+    plt.legend()
+    plt.xlabel("K")
+    plt.ylabel("Average Distortion")
+    plt.title("Small Correlated Codebook Test, R=1")
+    plt.savefig("plot/corr_codebook_R_1.pdf")
+
 
 
 
 def main():
-    gaussian_pareto([128, 512])
+    corr_codebook_R_1()
     return
 
 if __name__ == "__main__":

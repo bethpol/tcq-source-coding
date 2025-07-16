@@ -127,24 +127,32 @@ def sweep_lamb_fixed_K_gaussian(K: int, R: float, lamb_min: float, lamb_max: flo
              params = np.array([lamb_min, lamb_max, POINTS]))
     return
 
-def corr_codebook_R_1(rho: float, K: int) -> None:
+def corr_codebook_R_1(rho: float, K: list) -> None:
     """
     Perform Rate-1 trellis experiment for the correlated codebook setup
     Use K for constraint length and rho for correlation coefficient
     """
     TRIALS = 100
     n = 1000
+    avg_dist = np.zeros(len(K))
+    for i, K_val in enumerate(K):
+        print(K_val, rho)
+        for _ in range(TRIALS):
+            T = trellis.Trellis(2**K_val, n, 0, 1, ["Corr"])
+            x = np.random.normal(loc=0, scale=1, size=n)
+            results = T.encode_vector(x, R=1.0, lamb=0.0, phi=0.5, rho=rho)
+            avg_dist[i] += results[2] / TRIALS
+    fname = f"data/corr_codebook_rho_{str(rho).replace('.', '_')}.npz"
+    np.savez(fname, distortions = avg_dist, K_vals = np.array(K))
+    return
     
 
 
 def main():
-    # Gaussian Source Higher K
-    rates = np.linspace(0.05, 1.0, 20)
-    print(2**9)
-    print(rates)
-    for R in rates:
-        print(R)
-        sweep_lamb_fixed_K_gaussian(2**9, R, 0.05, 1.95)
+    # corr_codebook_R_1(-0.75, [5,6,7,8])
+    # corr_codebook_R_1(-0.5, [5,6,7,8])
+    # corr_codebook_R_1(-0.25, [5,6,7,8])
+    corr_codebook_R_1(-0.0, [5,6,7,8])
     return
 
 if __name__ == "__main__":

@@ -91,7 +91,7 @@ class Trellis:
             # rho is negative correlation coefficient
             std = 1 - abs(rho)  # Adjust std dev if needed
 
-            if not -1 < rho < 0:
+            if not -1 < rho <= 0:
                 raise ValueError("Correlation coefficient should be negative and between -1 and 0.")
 
             num_pairs = self.K
@@ -148,10 +148,10 @@ class Trellis:
             if self.source_type == 0:
                 self.codebook = self._generate_codebook()
             if self.source_type == 1:
-                if self.params.size == 1:
+                if len(self.params) == 0:
                     D = 2 ** (-2 * R)
                     self.codebook = self._generate_codebook([D])
-                elif self.params[1] == "Corr":
+                elif self.params[0] == "Corr":
                     self.codebook = self._generate_corr_codebook(rho)
             return encode_R_1_numba(x_n, self.n, self.K, self.codebook, 
                                     self.source_type, self.transition)
