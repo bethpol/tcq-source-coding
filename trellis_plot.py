@@ -388,11 +388,27 @@ def corr_codebook_R_1() -> None:
     plt.title("Small Correlated Codebook Test, R=1")
     plt.savefig("plot/corr_codebook_R_1.pdf")
 
+def partitioned_codebook_R_1() -> None:
+    """
+    Makes plot to compare partitioned codebook to non-partitioned codebook at rate
+    """
+    plt.figure()
+    plt.grid()
+    data = np.load("data/partitioned_codebook_gaussian.npz")
+    ref_data = np.load("data/gaussian_varying_K_rate_1_1000.npz")
+    plt.plot(data["K_vals"], data["distortions"], "o-", label="Pos/Neg Codebook")
+    plt.plot(data["K_vals"], ref_data["distortions"][2:], "o-", label="Regular Codebook")
+    plt.hlines(0.25, 5, 9, color="tab:purple", label="Optimal Distortion")
+    plt.legend()
+    plt.xlabel("K")
+    plt.ylabel("Average Distortion")
+    plt.title("Pos/Neg Partitioned Codebook Test, R=1, n=1000")
+    plt.savefig("plot/partitioned_codebook_R_1.pdf")
 
 
 
 def main():
-    corr_codebook_R_1()
+    partitioned_codebook_R_1()
     return
 
 if __name__ == "__main__":

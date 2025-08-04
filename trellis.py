@@ -6,7 +6,9 @@ Trellis class for TCQ
 
 import numpy as np
 from scipy.optimize import minimize_scalar
+from scipy.stats import truncnorm
 from typing import Tuple
+import random
 
 from trellis_numba import (
     build_transition_matrix_0_numba,
@@ -109,6 +111,35 @@ class Trellis:
             return matrix
         return None
     
+    def _generate_custom_codebook(self, type: str, args: list) -> np.ndarray:
+        """
+        Generates custom codebook of selected type.
+        Types: 
+           PosNeg - rate 1, one branch positive, one branch negative
+
+        Returns:
+            np.ndarray: K*2 x n table of reconstructions
+        """
+        if self.source_type == 1:
+            if type == "PosNeg":
+
+                num_pairs = self.K
+                matrix = np.zeros((num_pairs * 2, self.n))
+
+                for i in range(num_pairs):
+                    # Generate one gaussian conditioned on being positive and one on negative
+                    pos = truncnorm.rvs(0, 100, loc=0, scale=np.sqrt(1 - args[0]))
+                    neg = truncnorm.rvs(-100, 0, loc=0, scale=np.sqrt(1 - args[0]))
+                    print(pos, neg)
+
+                    # Randomly assign positive/negative to top and bottom branches
+                    assign = random.getrandbits(1)
+                    matrix[2*i] = assign * pos + (1 - assign) * neg
+                    matrix[2*i + 1] = (1 - assign) * pos + assign * neg
+
+                return matrix
+        return None
+    
     def _generate_penalties(self) -> np.ndarray:
         """
         Generates the random assignments for p-params.
@@ -139,7 +170,7 @@ class Trellis:
         R: float = 1.0,
         lamb: float = 0.0,
         phi: float = 0.5, 
-        rho: float = 0.0
+        rho: float = 0.0,
     ) -> Tuple[np.ndarray, float, float]:        
         """
             TO-DO: Write this
@@ -153,21 +184,27 @@ class Trellis:
                     self.codebook = self._generate_codebook([D])
                 elif self.params[0] == "Corr":
                     self.codebook = self._generate_corr_codebook(rho)
+                elif self.params[0] == "PosNeg":
+                    D = 2 ** (-2 * R)
+                    self.codebook = self._generate_custom_codebook("PosNeg", [D])
             return encode_R_1_numba(x_n, self.n, self.K, self.codebook, 
                                     self.source_type, self.transition)
         elif R < 1.0:  # Call separate encode routine for fractional rate support
+            D = 2 ** (-2 * R)
             if self.source_type == 0:
                 self.codebook = self._generate_codebook()
             if self.source_type == 1:
-                D = 2 ** (-2 * R)
-                self.codebook = self._generate_codebook([D])
+                if self.params[0] == "PosNeg":
+                    self.codebook = self._generate_custom_codebook("PosNeg", [D])
+                else:
+                    self.codebook = self._generate_codebook([D])
             return encode_frac_R_numba(x_n, phi, lamb, self.n, self.K, self.codebook, self.penalties,
                                     self.source_type, self.transition)
         return None, -1.0, -1.0
         
 
 
-            
+
 
 def main():
     return

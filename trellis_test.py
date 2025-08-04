@@ -146,13 +146,29 @@ def corr_codebook_R_1(rho: float, K: list) -> None:
     np.savez(fname, distortions = avg_dist, K_vals = np.array(K))
     return
     
+def partitioned_codebook(K: list) -> None:
+    """
+    Test the positive/negative codebook partition at rate 1
+    """
+    TRIALS = 100
+    n = 1000
+    avg_dist = np.zeros(len(K))
+    for i, K_val in enumerate(K):
+        print(K_val)
+        for _ in range(TRIALS):
+            T = trellis.Trellis(2**K_val, n, 0, 1, ["PosNeg"])
+            x = np.random.normal(loc=0, scale=1, size=n)
+            results = T.encode_vector(x, R=1.0, lamb=0.0, phi=0.5)
+            avg_dist[i] += results[2] / TRIALS
+    fname = f"data/partitioned_codebook_gaussian_n_{n}.npz"
+    np.savez(fname, distortions = avg_dist, K_vals = np.array(K))
+    return
+
+
 
 
 def main():
-    # corr_codebook_R_1(-0.75, [5,6,7,8])
-    # corr_codebook_R_1(-0.5, [5,6,7,8])
-    # corr_codebook_R_1(-0.25, [5,6,7,8])
-    corr_codebook_R_1(-0.0, [5,6,7,8])
+    partitioned_codebook([5,6,7,8,9])
     return
 
 if __name__ == "__main__":
