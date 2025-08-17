@@ -67,6 +67,12 @@ class Trellis:
                 return None
             state_bits = np.log2(self.K)
             return build_transition_matrix_0_numba(self.K, state_bits)
+        elif self.structure == 1: # Generate noisy typewriter shift register trellis
+            matrix = np.zeros((self.K, self.K), dtype=int)
+            np.fill_diagonal(matrix, 1)
+            matrix[np.arange(self.K - 1), np.arange(1, self.K)] = 1
+            matrix[-1, 0] = 1
+            return matrix
         return None
     
     def _generate_codebook(self, params=[]) -> np.ndarray:
@@ -130,7 +136,6 @@ class Trellis:
                     # Generate one gaussian conditioned on being positive and one on negative
                     pos = truncnorm.rvs(0, 100, loc=0, scale=np.sqrt(1 - args[0]))
                     neg = truncnorm.rvs(-100, 0, loc=0, scale=np.sqrt(1 - args[0]))
-                    print(pos, neg)
 
                     # Randomly assign positive/negative to top and bottom branches
                     assign = random.getrandbits(1)

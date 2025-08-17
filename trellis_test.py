@@ -151,7 +151,7 @@ def partitioned_codebook(K: list) -> None:
     Test the positive/negative codebook partition at rate 1
     """
     TRIALS = 100
-    n = 1000
+    n = 10000
     avg_dist = np.zeros(len(K))
     for i, K_val in enumerate(K):
         print(K_val)
@@ -168,7 +168,8 @@ def partitioned_codebook(K: list) -> None:
 
 
 def main():
-    partitioned_codebook([5,6,7,8,9])
+    # partitioned_codebook([5,6,7,8])
+    gaussian_varying_K_rate_1(5, 8, 10000, 100)
     return
 
 if __name__ == "__main__":
