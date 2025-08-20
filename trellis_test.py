@@ -174,15 +174,18 @@ def partitioned_codebook_R_var(R: float) -> None:
     K_log = 7
     lambdas = np.linspace(0.05, 1.95, 20)
     avg_dist = np.zeros(len(lambdas))
+    avg_rate = np.zeros(len(lambdas))
     phi = inverse_H(R) # Calculate phi based on required target rate
     for i, lam in enumerate(lambdas):
+        print(f"Lambda Index: {i}")
         for _ in range(TRIALS):
             T = trellis.Trellis(2**K_log, n, 0, 1, ["Partition"])
             x = np.random.normal(loc=0, scale=1, size=n)
-            results = T.encode_vector(x, R=R, lamb=lam, phi=phi)
+            results = T.encode_vector(x, target_R=R, lamb=lam, phi=phi)
             avg_dist[i] += results[2] / TRIALS
-    fname = f"data/partitioned_codebook_gaussian_n_{n}.npz"
-    np.savez(fname, distortions=avg_dist, lambda_vals=lambdas)
+            avg_rate[i] += results[1] / TRIALS
+    fname = f"data/gaussian_partition_reference_R_{str(R).replace('.', '_')}.npz"
+    np.savez(fname, rates=avg_rate, distortions=avg_dist, lambda_vals=lambdas)
     return
 
 

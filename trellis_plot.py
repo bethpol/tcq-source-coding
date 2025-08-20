@@ -406,9 +406,30 @@ def partitioned_codebook_R_1() -> None:
     plt.savefig("plot/partitioned_codebook_R_1.pdf")
 
 
+def partitioned_codebook_R_0_5() -> None:
+    """
+    Plot to test partitioned codebook at rate point 0.5
+    """
+    plt.figure()
+    plt.grid()
+    data = np.load("data/gaussian_partitioned_0_5.npz")
+    plt.plot(data["distortions"], data["rates"], "o-", label=r"$\phi-$Partitioned Codebook")
+    ref_data = np.load("data/gaussian_partitioned_reference_0_5.npz")
+    plt.plot(ref_data["distortions"], ref_data["rates"], "o-", label="Non-Partitioned")
+    posneg_data = np.load("data/gaussian_posneg_reference_R_0_5.npz")
+    plt.plot(posneg_data["distortions"], posneg_data["rates"], "o-", label="+/- Fixed Partition")
+    d_opt = np.linspace(0.25, 0.99, 100)
+    r_opt = np.array([R_opt_gaussian(d) for d in d_opt])
+    plt.plot(d_opt, r_opt, color="grey", label="RD Curve")
+    plt.xlabel("Distortion")
+    plt.ylabel("Rate")
+    plt.legend()
+    plt.title("Partitioned Codebook at Target Rate 0.5, K=7")
+    plt.savefig("debug.pdf")
 
 def main():
-    partitioned_codebook_R_1()
+    # partitioned_codebook_R_1()
+    partitioned_codebook_R_0_5()
     return
 
 if __name__ == "__main__":

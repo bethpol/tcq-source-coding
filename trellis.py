@@ -142,7 +142,7 @@ class Trellis:
                 """
                 scale = np.sqrt(1 - codebook_args[0])  # std
                 cutoff = scale * norm.ppf(phi)
-                print(f"Scale: {scale}, Cutoff: {cutoff}")
+                # print(f"Scale: {scale}, Cutoff: {cutoff}")
                 
                 rng = np.random.default_rng()
                 shape = self.penalties.shape
@@ -217,7 +217,7 @@ class Trellis:
     ) -> Tuple[np.ndarray, float, float]:        
         """
             TO-DO: Write this
-            """
+        """
         if self.source_type == 0:
             self.codebook = self._generate_codebook()
         if self.source_type == 1:
