@@ -164,29 +164,34 @@ def partitioned_codebook(K: list) -> None:
     np.savez(fname, distortions = avg_dist, K_vals = np.array(K))
     return
 
-def partitioned_codebook_R_0_5(K: list) -> None:
+def partitioned_codebook_R_var(R: float) -> None:
     """
-    Test the positive/negative codebook partition at rate 0.5
+    Test the positive/negative codebook partition at given rate R
+    Fixed K = 7
     """
     TRIALS = 100
     n = 1000
-    avg_dist = np.zeros(len(K))
-    for i, K_val in enumerate(K):
-        print(K_val)
+    K_log = 7
+    lambdas = np.linspace(0.05, 1.95, 20)
+    avg_dist = np.zeros(len(lambdas))
+    phi = inverse_H(R) # Calculate phi based on required target rate
+    for i, lam in enumerate(lambdas):
         for _ in range(TRIALS):
-            T = trellis.Trellis(2**K_val, n, 0, 1, ["PosNeg"])
+            T = trellis.Trellis(2**K_log, n, 0, 1, ["Partition"])
             x = np.random.normal(loc=0, scale=1, size=n)
-            results = T.encode_vector(x, R=1.0, lamb=0.0, phi=0.5)
+            results = T.encode_vector(x, R=R, lamb=lam, phi=phi)
             avg_dist[i] += results[2] / TRIALS
     fname = f"data/partitioned_codebook_gaussian_n_{n}.npz"
-    np.savez(fname, distortions = avg_dist, K_vals = np.array(K))
+    np.savez(fname, distortions=avg_dist, lambda_vals=lambdas)
     return
 
 
-
 def main():
-    partitioned_codebook([5,6,7,8])
+    # partitioned_codebook([5,6,7,8])
+    #
     # gaussian_varying_K_rate_1(5, 8, 10000, 100)
+    #
+    partitioned_codebook_R_var(0.5)
     return
 
 if __name__ == "__main__":

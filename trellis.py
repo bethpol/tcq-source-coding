@@ -7,6 +7,8 @@ Trellis class for TCQ
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.stats import truncnorm
+from scipy.optimize import minimize_scalar
+from scipy.stats import norm
 from typing import Tuple
 import random
 
@@ -122,56 +124,64 @@ class Trellis:
         Generates custom codebook of selected type.
         Types: 
            PosNeg - one branch positive, one branch negative
-           Partitioned - assigns phi (1-phi) penalty branch to phi (1-phi) partition
+                Requires one arg [D]
+           Partition - assigns phi (1-phi) penalty branch to phi (1-phi) partition
+                Requires args [D, phi]
 
         Returns:
-            np.ndarray: K*2 x n table of reconstructions
+            np.ndarray: K*2 x n table of trellis reconstructions for each branch
         """
         if self.source_type == 1:
-            if type == "PosNeg":
+            if type == "PosNeg":  # Assign phi based on either 0.5 or target phi
+                phi = 0.5
+            elif type == "Partition":
+                phi = codebook_args[1]
+            if type == "PosNeg" or type == "Partition":
                 """
                 matrix = np.zeros((num_pairs * 2, self.n))
                 """
-                cutoff = 0.0
-                scale = np.sqrt(1 - codebook_args[0])
-                num_pairs = self.K
+                scale = np.sqrt(1 - codebook_args[0])  # std
+                cutoff = scale * norm.ppf(phi)
+                print(f"Scale: {scale}, Cutoff: {cutoff}")
+                
                 rng = np.random.default_rng()
-                total = self.n * self.K
-                # positives (>= cutoff)
-                pos = np.empty(total)
-                k = 0
-                while k < total:
-                    x = rng.normal(0, scale, total - k)
-                    x = x[x >= cutoff]
-                    m = min(len(x), total - k)
-                    pos[k:k+m] = x[:m]
-                    k += m
+                shape = self.penalties.shape
+                total = self.penalties.size
 
-                # negatives (< phi)
-                neg = np.empty(total)
+                # Allocate result
+                matrix = np.empty(shape)
+
+                # Number of samples needed
+                num_neg = np.sum(self.penalties == 1)   # below cutoff
+                num_pos = total - num_neg              # above cutoff
+
+                # Draw less than cutoff for phi branches
+                neg = np.empty(num_neg)
                 k = 0
-                while k < total:
-                    x = rng.normal(0, scale, total - k)
+                while k < num_neg:
+                    x = rng.normal(0, scale, num_neg - k)
                     x = x[x < cutoff]
-                    m = min(len(x), total - k)
+                    m = min(len(x), num_neg - k)
                     neg[k:k+m] = x[:m]
                     k += m
 
-                # assignment
-                assign = rng.integers(0, 2, total)
+                # Draw greater than cutoff for (1-phi) branches
+                pos = np.empty(num_pos)
+                k = 0
+                while k < num_pos:
+                    x = rng.normal(0, scale, num_pos - k)
+                    x = x[x >= cutoff]
+                    m = min(len(x), num_pos - k)
+                    pos[k:k+m] = x[:m]
+                    k += m
 
-                # reshape
-                pos = pos.reshape(num_pairs, self.n)
-                neg = neg.reshape(num_pairs, self.n)
-                assign = assign.reshape(num_pairs, self.n)
-
-                # fill matrix
-                matrix = np.empty((2*num_pairs, self.n))
-                matrix[0::2] = assign * pos + (1 - assign) * neg
-                matrix[1::2] = (1 - assign) * pos + assign * neg
+                # Fill matrix based on mask
+                matrix[self.penalties == 1] = neg
+                matrix[self.penalties == 0] = pos
 
                 return matrix
         return None
+
     
     def _generate_penalties(self) -> np.ndarray:
         """
@@ -200,7 +210,7 @@ class Trellis:
     def encode_vector(
         self,
         x_n: np.ndarray,
-        R: float = 1.0,
+        target_R: float = 1.0,
         lamb: float = 0.0,
         phi: float = 0.5, 
         rho: float = 0.0,
@@ -208,41 +218,48 @@ class Trellis:
         """
             TO-DO: Write this
             """
-        if R == 1.0:
-            if self.source_type == 0:
-                self.codebook = self._generate_codebook()
-            if self.source_type == 1:
-                D = 2 ** (-2 * R)
-                if len(self.params) == 0:
-                    self.codebook = self._generate_codebook([D])
-                elif self.params[0] == "Corr":
-                    self.codebook = self._generate_corr_codebook(rho)
-                elif self.params[0] == "PosNeg":
-                    self.codebook = self._generate_custom_codebook("PosNeg", [D])
+        if self.source_type == 0:
+            self.codebook = self._generate_codebook()
+        if self.source_type == 1:
+            D = 2 ** (-2 * target_R)
+            if len(self.params) == 0:
+                self.codebook = self._generate_codebook([D])
+            elif self.params[0] == "Corr":
+                self.codebook = self._generate_corr_codebook(rho)
+            elif self.params[0] == "PosNeg":
+                self.codebook = self._generate_custom_codebook("PosNeg", [D])
+            elif self.params[0] == "Partition":
+                self.codebook = self._generate_custom_codebook("Partition", [D, phi])
+        if target_R == 1.0:
             return encode_R_1_numba(x_n, self.n, self.K, self.codebook, 
                                     self.source_type, self.transition)
-        elif R < 1.0:  # Call separate encode routine for fractional rate support
-            D = 2 ** (-2 * R)
-            if self.source_type == 0:
-                self.codebook = self._generate_codebook()
-            if self.source_type == 1:
-                if self.params[0] == "PosNeg":
-                    self.codebook = self._generate_custom_codebook("PosNeg", [D])
-                else:
-                    self.codebook = self._generate_codebook([D])
+        elif target_R < 1.0:  # Call separate encode routine for fractional rate support
             return encode_frac_R_numba(x_n, phi, lamb, self.n, self.K, self.codebook, self.penalties,
                                     self.source_type, self.transition)
         return None, -1.0, -1.0
         
+# Compute binary entropy function for parameter p
+def binary_entropy(p):
+    return -p * np.log2(p) - (1 - p) * np.log2(1 - p)
 
+# Compute inverse binary entropy function for a given rate to find p parameter
+def inverse_H(rate):
+    # Define a function that returns the absolute difference between H(p) and the desired value
+    def func(p):
+        return abs(binary_entropy(p) - rate)
+    # Use minimize_scalar to find the value of p that minimizes the absolute difference
+    result = minimize_scalar(func, bounds=(1e-15, 1-1e-15), method='bounded').x
+    if result > 0.5:
+        return np.float64(1 - result)
+    return np.float64(result)
 
 
 def main():
-    T = Trellis(8, 15, 0, 1, ["PosNeg"])
-    print(T.penalties)
-    x = np.random.normal(1, size=15)
-    T.encode_vector(x, 1, 0.0, 0.5)  # x rate lambda phi
+    T = Trellis(4, 1000, 0, 1, ["Partition"])
+    x = np.random.normal(1, size=1000)
+    T.encode_vector(x, 0.5, 1.0, inverse_H(0.5))  # x rate lambda phi
     print(T.codebook[:, :3])
+    print(T.penalties[:, :3])
     return
     
 
