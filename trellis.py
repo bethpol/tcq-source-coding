@@ -49,9 +49,9 @@ class Trellis:
         self.structure: int = structure
         self.source_type: int = source_type
         self.params: np.ndarray = params
-
+        
         self.transition: np.ndarray = self._generate_transition()
-        self.penalties: np.ndarray = self._generate_penalties()
+        self.penalties: np.ndarray = self._generate_penalties() # Just 0/1 assignments for phi/tau
         self.codebook: np.ndarray | None = None  # Codebook may depend on target rate
 
     def _generate_transition(self) -> np.ndarray:
@@ -117,30 +117,58 @@ class Trellis:
             return matrix
         return None
     
-    def _generate_custom_codebook(self, type: str, args: list) -> np.ndarray:
+    def _generate_custom_codebook(self, type: str, codebook_args: list) -> np.ndarray:
         """
         Generates custom codebook of selected type.
         Types: 
-           PosNeg - rate 1, one branch positive, one branch negative
+           PosNeg - one branch positive, one branch negative
+           Partitioned - assigns phi (1-phi) penalty branch to phi (1-phi) partition
 
         Returns:
             np.ndarray: K*2 x n table of reconstructions
         """
         if self.source_type == 1:
             if type == "PosNeg":
-
-                num_pairs = self.K
+                """
                 matrix = np.zeros((num_pairs * 2, self.n))
+                """
+                cutoff = 0.0
+                scale = np.sqrt(1 - codebook_args[0])
+                num_pairs = self.K
+                rng = np.random.default_rng()
+                total = self.n * self.K
+                # positives (>= cutoff)
+                pos = np.empty(total)
+                k = 0
+                while k < total:
+                    x = rng.normal(0, scale, total - k)
+                    x = x[x >= cutoff]
+                    m = min(len(x), total - k)
+                    pos[k:k+m] = x[:m]
+                    k += m
 
-                for i in range(num_pairs):
-                    # Generate one gaussian conditioned on being positive and one on negative
-                    pos = truncnorm.rvs(0, 100, loc=0, scale=np.sqrt(1 - args[0]))
-                    neg = truncnorm.rvs(-100, 0, loc=0, scale=np.sqrt(1 - args[0]))
+                # negatives (< phi)
+                neg = np.empty(total)
+                k = 0
+                while k < total:
+                    x = rng.normal(0, scale, total - k)
+                    x = x[x < cutoff]
+                    m = min(len(x), total - k)
+                    neg[k:k+m] = x[:m]
+                    k += m
 
-                    # Randomly assign positive/negative to top and bottom branches
-                    assign = random.getrandbits(1)
-                    matrix[2*i] = assign * pos + (1 - assign) * neg
-                    matrix[2*i + 1] = (1 - assign) * pos + assign * neg
+                # assignment
+                assign = rng.integers(0, 2, total)
+
+                # reshape
+                pos = pos.reshape(num_pairs, self.n)
+                neg = neg.reshape(num_pairs, self.n)
+                assign = assign.reshape(num_pairs, self.n)
+
+                # fill matrix
+                matrix = np.empty((2*num_pairs, self.n))
+                matrix[0::2] = assign * pos + (1 - assign) * neg
+                matrix[1::2] = (1 - assign) * pos + assign * neg
 
                 return matrix
         return None
@@ -184,13 +212,12 @@ class Trellis:
             if self.source_type == 0:
                 self.codebook = self._generate_codebook()
             if self.source_type == 1:
+                D = 2 ** (-2 * R)
                 if len(self.params) == 0:
-                    D = 2 ** (-2 * R)
                     self.codebook = self._generate_codebook([D])
                 elif self.params[0] == "Corr":
                     self.codebook = self._generate_corr_codebook(rho)
                 elif self.params[0] == "PosNeg":
-                    D = 2 ** (-2 * R)
                     self.codebook = self._generate_custom_codebook("PosNeg", [D])
             return encode_R_1_numba(x_n, self.n, self.K, self.codebook, 
                                     self.source_type, self.transition)
@@ -210,11 +237,14 @@ class Trellis:
 
 
 
-
 def main():
+    T = Trellis(8, 15, 0, 1, ["PosNeg"])
+    print(T.penalties)
+    x = np.random.normal(1, size=15)
+    T.encode_vector(x, 1, 0.0, 0.5)  # x rate lambda phi
+    print(T.codebook[:, :3])
     return
     
-
 
 if __name__ == "__main__":
     main()
