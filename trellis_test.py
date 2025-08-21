@@ -164,14 +164,12 @@ def partitioned_codebook(K: list) -> None:
     np.savez(fname, distortions = avg_dist, K_vals = np.array(K))
     return
 
-def partitioned_codebook_R_var(R: float) -> None:
+def partitioned_codebook_R_var(R: float, K_log: int) -> None:
     """
-    Test the positive/negative codebook partition at given rate R
-    Fixed K = 7
+    Test the positive/negative codebook partition at given rate R with constraint length K_log
     """
     TRIALS = 100
     n = 1000
-    K_log = 7
     lambdas = np.linspace(0.05, 1.95, 20)
     avg_dist = np.zeros(len(lambdas))
     avg_rate = np.zeros(len(lambdas))
@@ -184,7 +182,7 @@ def partitioned_codebook_R_var(R: float) -> None:
             results = T.encode_vector(x, target_R=R, lamb=lam, phi=phi)
             avg_dist[i] += results[2] / TRIALS
             avg_rate[i] += results[1] / TRIALS
-    fname = f"data/gaussian_partition_reference_R_{str(R).replace('.', '_')}.npz"
+    fname = f"data/gaussian_partition_reference_R_{str(R).replace('.', '_')}_K_{K_log}.npz"
     np.savez(fname, rates=avg_rate, distortions=avg_dist, lambda_vals=lambdas)
     return
 
