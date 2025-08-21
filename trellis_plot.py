@@ -427,9 +427,27 @@ def partitioned_codebook_R_0_5() -> None:
     plt.title("Partitioned Codebook at Target Rate 0.5, K=7")
     plt.savefig("debug.pdf")
 
+def gaussian_noisy_typewriter() -> None:
+    """
+    Plots comparison of 2 currently implemented Trellis structures
+    """
+    plt.figure()
+    plt.grid()
+    data = np.load("data/gaussian_noisy_typewriter.npz")
+    plt.plot(data["K_vals"], data["typewriter"], "o-", label="Noisy Typewriter")
+    plt.plot(data["K_vals"], data["shift_reg"], "o-", label="Shift Register")
+    plt.xlabel("log(Number of States)")
+    plt.ylabel("Average Distortion")
+    plt.hlines(0.25, 5, 8, color="tab:purple", label="Optimal Distortion")
+    plt.legend()
+    plt.title("Trellis Structure Test")
+    plt.savefig("plot/gaussian_noisy_typewriter.pdf")
+
 def main():
     # partitioned_codebook_R_1()
-    partitioned_codebook_R_0_5()
+    # partitioned_codebook_R_0_5()
+    gaussian_noisy_typewriter()
+
     return
 
 if __name__ == "__main__":

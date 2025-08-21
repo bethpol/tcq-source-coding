@@ -188,13 +188,46 @@ def partitioned_codebook_R_var(R: float) -> None:
     np.savez(fname, rates=avg_rate, distortions=avg_dist, lambda_vals=lambdas)
     return
 
+def gaussian_noisy_typewriter(log_states: list) -> None:
+    """
+    Tests trellis structure 1: noisy typewriter
+    For each log_states, generates trellis 2 ** log_states 
+            & compares to shift register
+    """
+    TRIALS = 100
+    n = 1000
+    type_avg_dist = np.zeros(len(log_states))
+    shift_avg_dist = np.zeros(len(log_states))
+    for i, K_val in enumerate(log_states):
+        print(K_val)
+        print("Running typewriter structure")
+        for _ in range(TRIALS):
+            T = trellis.Trellis(2**K_val, n, structure=1, source_type=1, params=[])
+            x = np.random.normal(loc=0, scale=1, size=n)
+            results = T.encode_vector(x, target_R=1.0, lamb=0.0, phi=0.5)
+            type_avg_dist[i] += results[2] / TRIALS
+        print("Running shift register structure")
+        for _ in range(TRIALS):
+            T = trellis.Trellis(2**K_val, n, structure=0, source_type=1, params=[])
+            x = np.random.normal(loc=0, scale=1, size=n)
+            results = T.encode_vector(x, target_R=1.0, lamb=0.0, phi=0.5)
+            shift_avg_dist[i] += results[2] / TRIALS
+    fname = "data/gaussian_noisy_typewriter.npz"
+    np.savez(fname, 
+             typewriter = type_avg_dist, 
+             shift_reg = shift_avg_dist, 
+             K_vals = np.array(log_states))
+    return
+
 
 def main():
     # partitioned_codebook([5,6,7,8])
     #
     # gaussian_varying_K_rate_1(5, 8, 10000, 100)
     #
-    partitioned_codebook_R_var(0.5)
+    # partitioned_codebook_R_var(0.5)
+    #
+    gaussian_noisy_typewriter([4,5,6,7,8])
     return
 
 if __name__ == "__main__":

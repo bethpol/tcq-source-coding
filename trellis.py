@@ -30,8 +30,8 @@ class Trellis:
         structure (int): Encodes the trellis structure.
                          Currently supported:
                           0 - Shift-register structure
+                          1 - "Noisy Typewriter" Structure
                           TO-DO:
-                          1 - Branches same and down
                           2 - Fully connected
         source_type (int): Encodes the source_type and distortion measure combination.
                       Currently supported:
@@ -255,11 +255,11 @@ def inverse_H(rate):
 
 
 def main():
-    T = Trellis(4, 1000, 0, 1, ["Partition"])
-    x = np.random.normal(1, size=1000)
-    T.encode_vector(x, 0.5, 1.0, inverse_H(0.5))  # x rate lambda phi
-    print(T.codebook[:, :3])
-    print(T.penalties[:, :3])
+    T = Trellis(K=4, n=10, structure=1, source_type=1, params=[])
+    print(T.transition)
+    x = np.random.normal(loc=0, scale=1, size=10)
+    results = T.encode_vector(x, 1, 0, 0.5, 0.0)
+    print(results[0])
     return
     
 
